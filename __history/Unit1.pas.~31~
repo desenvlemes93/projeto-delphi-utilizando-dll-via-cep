@@ -1,0 +1,111 @@
+unit Unit1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,System.Json, REST.Client, REST.HttpClient,Rest.Types;
+
+type
+  TForm1 = class(TForm)
+    GroupBox1: TGroupBox;
+    edtCep: TEdit;
+    Button1: TButton;
+    Label1: TLabel;
+    lblCidade: TLabel;
+    Label2: TLabel;
+    lblUf: TLabel;
+    procedure Button1Click(Sender: TObject);
+  private
+
+    { Private declarations }
+  public
+  function teste(p: string) : TJSONObject;
+    { Public declarations }
+  end;
+
+//function BuscarDadosViaCep(pCep: Integer) : TJSONObject; stdcall external 'BuscarCidade.dll';
+var
+  Form1: TForm1;
+
+implementation
+
+{$R *.dfm}
+
+{ TForm1 }
+procedure TForm1.Button1Click(Sender: TObject);
+var
+  endereco: TJSONObject;
+  obj: TJSONObject;
+begin
+  try
+    endereco :=  teste((edtCep.Text)); // Chama a DLL
+    if endereco is TJSONObject then
+    begin
+      lblCidade.Caption := endereco.Values['localidade'].Value;
+      lblUf.Caption  :=    endereco.Values['uf'].Value;
+    end;
+  finally
+
+  end;
+
+end;
+function TForm1.teste(p: string): TJSONObject;
+var
+  lDadosApi      : TRESTClient;
+  lDadosRequest  : TRESTRequest;
+  lDadosResponse : TRESTResponse;
+  lJsonValue : TJsonValue;
+begin
+  lDadosApi        := TRESTClient.Create(Nil);
+  lDadosRequest    := TRESTRequest.Create(Nil);
+  lDadosResponse   := TRESTResponse.Create(Nil);
+  lJsonValue := TJsonValue.Create;
+  try
+    try
+      lDadosRequest.Client := lDadosApi;
+      lDadosRequest.Response := lDadosResponse;
+
+      lDadosApi.BaseURL  := 'http://viacep.com.br/ws/'+p.ToString +'/json/';
+      lDadosApi.ContentType := 'application/json';
+      lDadosRequest.Method := TRESTRequestMethod.rmGET;
+
+      lDadosRequest.Execute;
+
+      if (lDadosResponse.StatusCode = 200 )  then
+      begin
+         lJsonValue  := TJSONObject.ParseJSONValue(lDadosResponse.Content);
+         if Assigned(lJsonValue) and (lJsonValue is TJSONObject) then
+         begin
+            Result := TJSONObject(lJsonValue);
+         end;
+      end;
+
+      if (lDadosResponse.StatusCode = 204 ) then
+      begin
+        raise Exception.Create('Não foi encontrado registo para os dados informados');
+      end;
+
+     Except
+      on E: Exception do
+      begin
+        raise Exception.Create('Erro ao consultar a api ' + e.Message);
+
+      end;
+
+    end;
+    finally
+    lDadosRequest.Free;
+    end;
+//  Except
+//  on E: Exception do
+//  begin
+//    raise Exception.Create('Erro ao consultar a api ' + e.Message);
+//
+//  end;
+end;
+
+
+
+
+end.
